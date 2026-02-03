@@ -122,7 +122,10 @@ func add_hero_to_party(hero_id):
 			"xp": 0,
 			"hp": stats["hp"],
 			"max_hp": stats["hp"],
+			"mp": stats.get("mp", 20),
+			"max_mp": stats.get("mp", 20),
 			"base_damage": stats["damage"],
+			"base_magic_prowess": stats.get("magic_prowess", 2),
 			"base_stamina": stats["stamina"],
 			"base_stamina_regen": stats["stamina_regen"],
 			"base_defense": stats.get("defense", 0),
@@ -147,7 +150,7 @@ func get_stats_for_level(lvl):
 	if growth_database.has(s_lvl):
 		return growth_database[s_lvl]
 	else:
-		return { "hp": 20, "damage": 2, "stamina": 100, "stamina_regen": 1.0, "defense": 0, "exp_required": 100 }
+		return { "hp": 20, "damage": 2, "mp": 20, "magic_prowess": 2, "stamina": 100, "stamina_regen": 1.0, "defense": 0, "exp_required": 100 }
 
 func save_game():
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -288,7 +291,9 @@ func _check_level_up(idx, member):
 		var growth = hero_growth_database.get(hero_id, { "hp": 2, "damage": 1, "stamina": 0, "stamina_regen": 0.0 })
 
 		member["max_hp"] += growth.get("hp", 0)
+		member["max_mp"] += growth.get("mp", 0)
 		member["base_damage"] += growth.get("damage", 0)
+		member["base_magic_prowess"] += growth.get("magic_prowess", 0)
 		member["base_stamina"] += growth.get("stamina", 0)
 		member["base_stamina_regen"] += growth.get("stamina_regen", 0.0)
 		member["base_defense"] = member.get("base_defense", 0) + growth.get("defense", 0)
@@ -296,6 +301,7 @@ func _check_level_up(idx, member):
 		# Full Heal
 		var effective_max = get_member_effective_stat(idx, "hp", member["max_hp"])
 		member["hp"] = effective_max
+		member["mp"] = get_member_effective_stat(idx, "mp", member["max_mp"])
 
 		if _check_level_up(idx, member):
 			leveled_up = true

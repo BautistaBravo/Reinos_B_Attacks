@@ -41,8 +41,9 @@
     "name": "First Aid",
     "target_type": "self",
     "cost": 10,
+    "mana_cost": 5,
     "effects": [
-      { "type": "heal", "heal_type": "hp", "multiplier": 5.0 }
+      { "type": "heal", "heal_type": "hp", "multiplier": 5.0, "stat": "magic_prowess" }
     ]
   },
   "heal_stamina": {
@@ -57,8 +58,9 @@
     "name": "Group Heal",
     "target_type": "all_allies",
     "cost": 20,
+    "mana_cost": 15,
     "effects": [
-       { "type": "heal", "heal_type": "hp", "multiplier": 1.0 }
+       { "type": "heal", "heal_type": "hp", "multiplier": 1.0, "stat": "magic_prowess" }
     ]
   },
   "buff_attack": {
@@ -74,8 +76,9 @@
       "name": "Fireball",
       "target_type": "all_enemies",
       "cost": 20,
+      "mana_cost": 10,
       "effects": [
-          { "type": "damage", "multiplier": 1.0 }
+          { "type": "damage", "multiplier": 1.0, "stat": "magic_prowess" }
       ]
   },
   "damage_cleave": {

@@ -7,6 +7,7 @@ var description: String
 var effects: Array = []
 var target_type: String = "single"
 var stamina_cost: float = 0.0
+var mana_cost: float = 0.0
 var repeats: int = 1
 
 func _init(p_id: String, p_data: Dictionary):
@@ -15,6 +16,7 @@ func _init(p_id: String, p_data: Dictionary):
 	description = p_data.get("description", "")
 	target_type = p_data.get("target_type", "single")
 	stamina_cost = p_data.get("cost", 0.0)
+	mana_cost = p_data.get("mana_cost", 0.0)
 	repeats = p_data.get("repeats", 1)
 
 	var effect_defs = p_data.get("effects", [])
@@ -37,4 +39,4 @@ func execute(manager, source_idx: int, source_is_party: bool, target_idx: int, t
 		var targets = manager.resolve_targets(source_idx, source_is_party, target_idx, target_is_party, target_type)
 		for t in targets:
 			for effect in effects:
-				effect.apply(manager, source_idx, source_is_party, t.index, t.is_party)
+				effect.apply(manager, source_idx, source_is_party, t["index"], t["is_party"])

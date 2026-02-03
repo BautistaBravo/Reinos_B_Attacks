@@ -35,6 +35,8 @@ var controlled_hero_idx = 0
 var party_stamina = []
 var party_max_stamina = []
 var party_stamina_regen = []
+var party_mp = []
+var party_max_mp = []
 var party_debuffs = []
 var party_action_cooldowns = []
 
@@ -54,10 +56,12 @@ func init_combat():
 
 	_calculate_party_stats()
 	party_stamina = []
+	party_mp = []
 	party_debuffs = []
 	party_action_cooldowns = []
 	for i in range(GameManager.party.size()):
 		party_stamina.append(party_max_stamina[i])
+		party_mp.append(party_max_mp[i])
 		party_debuffs.append([])
 		party_action_cooldowns.append(0.0)
 		GameManager.party[i]["shield"] = 0
@@ -95,6 +99,7 @@ func init_combat():
 func _calculate_party_stats():
 	party_max_stamina = []
 	party_stamina_regen = []
+	party_max_mp = []
 	for i in range(GameManager.party.size()):
 		var member = GameManager.party[i]
 		var base_stam = member.get("base_stamina", 100)
@@ -103,6 +108,10 @@ func _calculate_party_stats():
 		var total_regen = GameManager.get_member_effective_stat(i, "stamina_regen", base_regen)
 		party_max_stamina.append(total_stam)
 		party_stamina_regen.append(total_regen)
+
+		var base_mp = member.get("max_mp", 20)
+		var total_mp = GameManager.get_member_effective_stat(i, "mp", base_mp)
+		party_max_mp.append(total_mp)
 
 	_sync_player_stamina()
 
@@ -162,6 +171,19 @@ func _process(delta):
 
 	if party_changed:
 		emit_signal("player_stamina_updated", player_stamina, player_max_stamina)
+
+	# We should also emit MP update if changed, but we reuse party_updated or create new one.
+	# party_updated sends full party data.
+	# We can update 'mp' in GameManager.party during process?
+	# Or just sync party_mp to GameManager.party occasionally.
+	# For now, UI might just read from party_mp if we passed it?
+	# View listens to 'party_updated'.
+	# Let's sync back to GameManager party for MP so View can read it, or pass mp array.
+	# The signal signature is party_updated(party_data, party_stamina, party_max_stamina).
+	# I should probably update the signal signature to include MP, or just update the dicts in 'party_data'.
+
+	for i in range(party_mp.size()):
+		GameManager.party[i]["mp"] = party_mp[i]
 
 	emit_signal("combat_frame_update", party_stamina, enemy_atb_gauges)
 
@@ -257,6 +279,15 @@ func _execute_combo():
 func execute_skill(skill_id, user_idx, source_is_party, target_idx, target_is_party):
 	if GameManager.skill_database.has(skill_id):
 		var skill = GameManager.skill_database[skill_id]
+
+		# Check MP Cost
+		if source_is_party:
+			if skill.mana_cost > 0:
+				if party_mp[user_idx] < skill.mana_cost:
+					emit_signal("log_message", "Not enough Mana for " + skill.name + "!")
+					return
+				party_mp[user_idx] -= skill.mana_cost
+
 		skill.execute(self, user_idx, source_is_party, target_idx, target_is_party)
 	else:
 		emit_signal("log_message", "Unknown skill: " + str(skill_id))
@@ -326,6 +357,9 @@ func get_combatant_stat(idx, is_party, stat):
 			elif stat == "defense":
 				var base = GameManager.party[idx].get("base_defense", 0)
 				val = GameManager.get_member_effective_stat(idx, "defense", base)
+			elif stat == "magic_prowess":
+				var base = GameManager.party[idx].get("base_magic_prowess", 0)
+				val = GameManager.get_member_effective_stat(idx, "magic_prowess", base)
 			else:
 				val = GameManager.party[idx].get(stat, 0)
 
