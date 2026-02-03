@@ -1,0 +1,97 @@
+{
+  "damage": {
+    "name": "Attack",
+    "description": "Basic attack",
+    "target_type": "single",
+    "cost": 5,
+    "effects": [
+      { "type": "damage", "multiplier": 1.0, "stat": "damage" }
+    ]
+  },
+  "heavy_damage": {
+    "name": "Heavy Strike",
+    "description": "Deals double damage, overflows to next enemy.",
+    "target_type": "single",
+    "cost": 15,
+    "effects": [
+      { "type": "damage", "multiplier": 2.0, "stat": "damage", "overflow": true }
+    ]
+  },
+  "damage_bleed": {
+    "name": "Rend",
+    "description": "Attack and bleed.",
+    "target_type": "single",
+    "cost": 10,
+    "effects": [
+      { "type": "damage", "multiplier": 1.0 },
+      { "type": "debuff", "status_type": "bleed", "duration": 4.0 }
+    ]
+  },
+  "damage_slow": {
+    "name": "Hamstring",
+    "description": "Attack and slow.",
+    "target_type": "single",
+    "cost": 10,
+    "effects": [
+      { "type": "damage", "multiplier": 1.0 },
+      { "type": "debuff", "status_type": "slowed", "duration": 5.0 }
+    ]
+  },
+  "heal_self": {
+    "name": "First Aid",
+    "target_type": "self",
+    "cost": 10,
+    "effects": [
+      { "type": "heal", "heal_type": "hp", "multiplier": 5.0 }
+    ]
+  },
+  "heal_stamina": {
+    "name": "Rest",
+    "target_type": "self",
+    "cost": 0,
+    "effects": [
+      { "type": "heal", "heal_type": "stamina", "base_amount": 30 }
+    ]
+  },
+  "heal_party": {
+    "name": "Group Heal",
+    "target_type": "all_allies",
+    "cost": 20,
+    "effects": [
+       { "type": "heal", "heal_type": "hp", "multiplier": 1.0 }
+    ]
+  },
+  "buff_attack": {
+    "name": "War Cry",
+    "target_type": "self",
+    "cost": 10,
+    "effects": [
+      { "type": "buff", "status_type": "attack_boost", "duration": 10.0 },
+      { "type": "heal", "heal_type": "hp", "multiplier": 1.0 }
+    ]
+  },
+  "damage_aoe_all": {
+      "name": "Fireball",
+      "target_type": "all_enemies",
+      "cost": 20,
+      "effects": [
+          { "type": "damage", "multiplier": 1.0 }
+      ]
+  },
+  "damage_cleave": {
+      "name": "Cleave",
+      "target_type": "cleave",
+      "cost": 15,
+      "effects": [
+          { "type": "damage", "multiplier": 1.0 }
+      ]
+  },
+  "damage_random": {
+      "name": "Random Hits",
+      "target_type": "random_split",
+      "cost": 15,
+      "effects": [
+          { "type": "damage", "multiplier": 1.0, "distribution": "split" }
+      ]
+  }
+}
