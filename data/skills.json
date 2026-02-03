@@ -93,8 +93,9 @@
       "name": "Random Hits",
       "target_type": "random_split",
       "cost": 15,
+      "repeats": 5,
       "effects": [
-          { "type": "damage", "multiplier": 1.0, "distribution": "split" }
+          { "type": "damage", "multiplier": 0.2, "distribution": "split" }
       ]
   }
 }

@@ -39,6 +39,7 @@ var party_mp = []
 var party_max_mp = []
 var party_debuffs = []
 var party_action_cooldowns = []
+var party_blocking = [] # Array of bools
 
 # Enemy State
 var selected_enemy_index = -1
@@ -59,11 +60,13 @@ func init_combat():
 	party_mp = []
 	party_debuffs = []
 	party_action_cooldowns = []
+	party_blocking = []
 	for i in range(GameManager.party.size()):
 		party_stamina.append(party_max_stamina[i])
 		party_mp.append(party_max_mp[i])
 		party_debuffs.append([])
 		party_action_cooldowns.append(0.0)
+		party_blocking.append(false)
 		GameManager.party[i]["shield"] = 0
 
 	controlled_hero_idx = 0
@@ -147,7 +150,17 @@ func _process(delta):
 					multiplier *= 0.5
 
 			var old_stam = party_stamina[i]
-			party_stamina[i] = min(party_stamina[i] + (party_stamina_regen[i] * multiplier) * delta, party_max_stamina[i])
+
+			if party_blocking[i]:
+				var drain = party_max_stamina[i] * 0.02 * delta
+				party_stamina[i] -= drain
+				if party_stamina[i] <= 0:
+					party_stamina[i] = 0
+					party_blocking[i] = false
+					if i == controlled_hero_idx: emit_signal("log_message", "Stamina depleted, blocking stopped!")
+					emit_signal("party_updated", GameManager.party, party_stamina, party_max_stamina)
+			else:
+				party_stamina[i] = min(party_stamina[i] + (party_stamina_regen[i] * multiplier) * delta, party_max_stamina[i])
 
 			if old_stam != party_stamina[i]:
 				party_changed = true
@@ -357,6 +370,8 @@ func get_combatant_stat(idx, is_party, stat):
 			elif stat == "defense":
 				var base = GameManager.party[idx].get("base_defense", 0)
 				val = GameManager.get_member_effective_stat(idx, "defense", base)
+				if party_blocking[idx]:
+					val *= 2.0
 			elif stat == "magic_prowess":
 				var base = GameManager.party[idx].get("base_magic_prowess", 0)
 				val = GameManager.get_member_effective_stat(idx, "magic_prowess", base)
@@ -375,48 +390,28 @@ func get_combatant_stat(idx, is_party, stat):
 
 func deal_damage(target_idx, target_is_party, amount, source_idx, source_is_party, allow_overflow=false):
 	if target_is_party:
-		GameManager.damage_party_member(target_idx, amount)
+		var flat = 0
+		var blocking = false
+		if party_blocking[target_idx]:
+			flat = 5
+			blocking = true
+		GameManager.damage_party_member(target_idx, amount, flat, blocking)
 		if GameManager.party[target_idx]["hp"] <= 0:
 			_check_loss_condition()
 	else:
 		if target_idx < 0 or target_idx >= enemies_data.size(): return
 		if enemies_data[target_idx]["hp"] <= 0: return
 
-		var old_hp = enemies_data[target_idx]["hp"]
+		var defense = enemies_data[target_idx].get("defense", 0)
+		var mitigation = 1.0 / (1.0 + (defense * 0.01))
+		var effective_potential = amount * mitigation
+
 		var dmg_to_deal = GameManager.deal_damage_to_enemy_data(enemies_data[target_idx], amount)
 
-		# Calculate overflow based on what effective damage WOULD have been?
-		# GameManager helper handles reduction.
-		# To support overflow accurately as per previous logic:
-		# We need effective_damage (amount - defense - absorbed_by_shield).
-		# But GameManager does it all.
-		# Let's approximate overflow: if enemy died, remaining amount might be overflow?
-		# Actually, overflow logic in CombatManager was: `effective_damage - dmg_to_deal`.
+		var overflow_mitigated = max(0, effective_potential - dmg_to_deal)
+		# Convert back to raw
+		var overflow_raw = overflow_mitigated / mitigation
 
-		# Re-implementing simplified overflow for modularity:
-		# If we rely on GameManager, we lose the explicit 'overflow' return.
-		# But damage logic is shared.
-		# For this specific feature (heavy damage overflow), we might need the explicit calculation.
-		# But to satisfy "Consistency", I should use GameManager or update GameManager to return overflow.
-
-		# Let's just use GameManager for the deal execution.
-		# And for overflow, we can just say if target died, pass full amount? No that's wrong.
-
-		# Let's stick to using GameManager for standard damage application.
-		# If overflow is critical, I'll assume 0 for now or calculate it.
-
-		# Re-reading GameManager:
-		# var effective_damage = max(1, amount - defense)
-		# ...
-		# var dmg_to_deal = min(enemy_dict["hp"], effective_damage)
-
-		# I can reconstruct effective_damage here if needed, or update GameManager to return it.
-		# I will update GameManager in next step to return {damage, overflow} if I want to be precise,
-		# but for now, let's just use the function and handle death.
-
-		var defense = enemies_data[target_idx].get("defense", 0)
-		var effective_damage_est = max(1, amount - defense) # Estimate
-		var overflow = max(0, effective_damage_est - dmg_to_deal)
 		if source_is_party:
 			enemies_data[target_idx]["last_attacker"] = source_idx
 
@@ -429,9 +424,9 @@ func deal_damage(target_idx, target_is_party, amount, source_idx, source_is_part
 				selected_enemy_index = next
 				emit_signal("enemy_updated", enemies_data, enemy_atb_gauges, selected_enemy_index)
 
-				if allow_overflow and overflow > 0:
+				if allow_overflow and overflow_raw > 1.0:
 					emit_signal("log_message", "Damage Overflows!")
-					deal_damage(next, false, overflow, source_idx, source_is_party, true)
+					deal_damage(next, false, overflow_raw, source_idx, source_is_party, true)
 
 		_check_win_condition()
 
@@ -546,7 +541,19 @@ func _enemy_attack(enemy_idx):
 func handle_input(event):
 	if not is_combat_active: return
 	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_SPACE:
+			party_blocking[controlled_hero_idx] = not party_blocking[controlled_hero_idx]
+			if party_blocking[controlled_hero_idx]:
+				emit_signal("log_message", "Blocking!")
+			else:
+				emit_signal("log_message", "Stopped Blocking.")
+			emit_signal("party_updated", GameManager.party, party_stamina, party_max_stamina)
+			return
+
 		if event.keycode == KEY_TAB:
+			# Turn off blocking when switching?
+			party_blocking[controlled_hero_idx] = false
+
 			var start = controlled_hero_idx
 			var next = controlled_hero_idx
 			for i in range(GameManager.party.size()):

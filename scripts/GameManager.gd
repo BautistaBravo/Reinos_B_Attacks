@@ -229,13 +229,23 @@ func heal_member(index, amount):
 			var max_h = get_member_effective_stat(index, "hp", member["max_hp"])
 			member["hp"] = min(member["hp"] + amount, max_h)
 
-func damage_party_member(index, amount):
+func damage_party_member(index, amount, flat_reduction=0, is_blocking=false):
 	if index >= 0 and index < party.size():
 		var member = party[index]
 		var shield = member.get("shield", 0)
 		var defense = get_member_effective_stat(index, "defense", member.get("base_defense", 0))
 
-		var effective_damage = max(1, amount - defense)
+		if is_blocking: defense *= 2
+
+		# Defense increases Effective HP by 1% per point.
+		# Mitigation Multiplier = 1 / (1 + Defense * 0.01)
+		var mitigation = 1.0 / (1.0 + (defense * 0.01))
+		var mitigated_damage = amount * mitigation
+
+		# Apply flat reduction (Blocking bonus)
+		mitigated_damage = max(0, mitigated_damage - flat_reduction)
+
+		var effective_damage = int(mitigated_damage)
 
 		if shield > 0:
 			var absorbed = min(shield, effective_damage)
@@ -246,14 +256,19 @@ func damage_party_member(index, amount):
 		if effective_damage > 0:
 			member["hp"] = max(0, member["hp"] - effective_damage)
 
-func deal_damage_to_enemy_data(enemy_dict, amount):
+func deal_damage_to_enemy_data(enemy_dict, amount, flat_reduction=0):
 	# Handles defense and shield for an enemy dictionary
 	if enemy_dict["hp"] <= 0: return 0
 
 	var defense = enemy_dict.get("defense", 0)
 	var shield = enemy_dict.get("shield", 0)
 
-	var effective_damage = max(1, amount - defense)
+	# EHP Formula: Damage / (1 + Def%)
+	var mitigation = 1.0 / (1.0 + (defense * 0.01))
+	var mitigated_damage = amount * mitigation
+
+	mitigated_damage = max(0, mitigated_damage - flat_reduction)
+	var effective_damage = int(mitigated_damage)
 
 	if shield > 0:
 		var absorbed = min(shield, effective_damage)

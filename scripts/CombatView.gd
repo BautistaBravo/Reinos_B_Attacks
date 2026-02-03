@@ -99,6 +99,11 @@ func _on_party_updated(party_data, party_stamina, party_max_stamina):
 		var shield = member.get("shield", 0)
 		var txt = str(member["hp"]) + "/" + str(total_max_hp)
 		if shield > 0: txt += " [" + str(shield) + "]"
+
+		# Visualize Blocking (Assuming CombatManager has party_blocking accessible)
+		if combat_manager.party_blocking.size() > i and combat_manager.party_blocking[i]:
+			txt += " (Block)"
+
 		hp_text.text = txt
 		vbox.add_child(hp_text)
 
